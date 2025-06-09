@@ -1,0 +1,10 @@
+target/
+Cargo.lock
+*-logs*
+static/
+repositories.json
+backend-version
+
+test-results/commits
+test-results/history
+_index.json
