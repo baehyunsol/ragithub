@@ -2,6 +2,10 @@ use bytes::Bytes;
 use crate::error::Error;
 use crate::init::init_server;
 use crate::methods::*;
+use ragit_cli::{
+    ArgParser,
+    ArgType,
+};
 use ragit_fs::{
     basename,
     join,
@@ -12,6 +16,7 @@ use ragit_fs::{
 use ragit_pdl::ImageType;
 use ragit_server::utils::fetch_form_data;
 use std::collections::HashMap;
+use std::env;
 use warp::Filter;
 use warp::filters::multipart::FormData;
 use warp::http::StatusCode;
@@ -26,6 +31,27 @@ mod utils;
 
 #[tokio::main]
 async fn main() {
+    let args = env::args().collect::<Vec<_>>();
+    let parsed_args = ArgParser::new()
+        .optional_arg_flag("--port", ArgType::IntegerBetween { min: Some(0), max: Some(65535) })
+        .short_flag(&["--port"])
+        .parse(&args, 1);
+
+    let port_number = match parsed_args {
+        Ok(parsed_args) => parsed_args.arg_flags.get("--port").map(|n| n.parse::<u16>().unwrap()).unwrap_or(8080),
+        Err(e) => {
+            let message = e.kind.render();
+            let span = e.span.unwrap_rendered();
+            eprintln!("cli error: {message}\n\n{}", ragit_cli::underline_span(
+                &span.0,
+                span.1,
+                span.2,
+            ));
+
+            std::process::exit(1)
+        },
+    };
+
     goto_root().unwrap();
     init_server().unwrap();
     tokio::spawn(methods::background_worker());
@@ -422,7 +448,7 @@ async fn main() {
                     );
                 }
             ))
-    ).run(([0, 0, 0, 0], 8080)).await;
+    ).run(([0, 0, 0, 0], port_number)).await;
 }
 
 fn goto_root() -> Result<(), Error> {

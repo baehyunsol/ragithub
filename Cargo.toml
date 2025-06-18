@@ -12,6 +12,7 @@ grass = "0.13.4"
 lazy_static = "1.5.0"
 mdxt = "0.7.3"
 ragit = { path = "../ragit", version = "0.4.2" }
+ragit-cli = { path = "../ragit/crates/cli", version = "0.4.2" }
 ragit-fs = { path = "../ragit/crates/fs", version = "0.4.2", features = ["log"] }
 ragit-pdl = { path = "../ragit/crates/pdl", version = "0.4.2" }
 ragit-server = { path = "../ragit/crates/server", version = "0.4.2" }
