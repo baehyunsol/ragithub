@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use bytes::Bytes;
 use crate::error::Error;
 use crate::init::init_server;
@@ -399,6 +401,23 @@ async fn main() {
             }
         );
 
+    let model_proxy_1 = warp::get()
+        .and(warp::path("ai-model-list"))
+        .and(warp::query::<HashMap<String, String>>())
+        .and(warp::path::end())
+        .then(
+            |query: HashMap<String, String>| async move {
+                ProxyBuilder {
+                    method: Method::Get,
+                    api_key: None,
+                    path: vec![String::from("ai-model-list")],
+                    response_type: ResponseType::Json,
+                    query,
+                    ..ProxyBuilder::default()
+                }.send().await
+            }
+        );
+
     let not_found_handler = warp::get().map(
         || Box::new(with_status(
             String::new(),
@@ -430,6 +449,7 @@ async fn main() {
             .or(push_proxy_2)
             .or(push_proxy_3)
             .or(push_proxy_4)
+            .or(model_proxy_1)
             .or(not_found_handler)
             .with(warp::log::custom(
                 |info| {

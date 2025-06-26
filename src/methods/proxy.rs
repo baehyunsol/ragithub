@@ -1,5 +1,6 @@
 use crate::BASE;
 use crate::error::Error;
+use crate::utils::into_query_string;
 use ragit_fs::write_log;
 use reqwest::{Client, RequestBuilder};
 use reqwest::multipart::{Form, Part};
@@ -12,6 +13,7 @@ use warp::reply::{Reply, json, with_header, with_status};
 pub struct ProxyBuilder {
     pub method: Method,
     pub path: Vec<String>,
+    pub query: HashMap<String, String>,
     pub api_key: Option<String>,
     pub body_raw: Option<Vec<u8>>,
     pub body_multiparts: Option<HashMap<String, Vec<u8>>>,
@@ -36,7 +38,15 @@ pub enum Method {
 
 impl ProxyBuilder {
     pub async fn send(&self) -> Box<dyn Reply> {
-        let url = format!("{BASE}/{}", self.path.join("/"));
+        let url = format!(
+            "{BASE}/{}{}",
+            self.path.join("/"),
+            if self.query.is_empty() {
+                String::new()
+            } else {
+                format!("?{}", into_query_string(&self.query))
+            },
+        );
         let request = match self.method {
             Method::Get => Client::new().get(&url),
             Method::Post => Client::new().post(&url),
