@@ -20,9 +20,9 @@ use serde::Serialize;
 pub fn init_server() -> Result<(), Error> {
     initialize_log(
         Some(String::from("ragit-server-logs")),
-        false,
-        false,
-        false,
+        false,  // dump_to_stdout
+        false,  // dump_to_stderr
+        true,   // keep_previous_file
     )?;
     write_log("server", "hello from ragithub!");
     let grass_option = grass::Options::default();
