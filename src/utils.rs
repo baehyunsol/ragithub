@@ -1,9 +1,11 @@
 use crate::error::Error;
 use chrono::{DateTime, Local};
+use lazy_static::lazy_static;
 use ragit_fs::write_log;
 use serde::de::DeserializeOwned;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
+use std::sync::RwLock;
 
 pub fn trim_long_string(s: &str, prefix_len: usize, suffix_len: usize) -> String {
     if s.len() <= (prefix_len + suffix_len) || s.chars().count() <= (prefix_len + suffix_len) {
@@ -171,20 +173,85 @@ fn is_safe_char(b: &u8) -> bool {
     }
 }
 
-pub async fn fetch_json<T: DeserializeOwned>(url: &str, api_key: &Option<String>) -> Result<T, Error> {
-    let mut request = reqwest::Client::new().get(url);
+// Bots are DDos-ing ragithub. I have to protect ragithub from them.
+lazy_static! {
+    static ref FETCH_JSON_CACHE: RwLock<HashMap<String, serde_json::Value>> = RwLock::new(HashMap::new());
+}
 
-    if let Some(api_key) = api_key {
-        request = request.header("x-api-key", api_key);
+static mut FETCH_JSON_CACHE_CLEAR_AT: i64 = 0;
+
+pub async fn fetch_json<T: DeserializeOwned>(url: &str, api_key: &Option<String>) -> Result<T, Error> {
+    let dt = unsafe { Local::now().timestamp() - FETCH_JSON_CACHE_CLEAR_AT };
+    let mut value: Option<serde_json::Value> = if let Ok(cache) = FETCH_JSON_CACHE.try_read() {
+        if dt > 300 {
+            // outdated data
+            None
+        }
+
+        else if let Some(v) = cache.get(url) {
+            write_log(
+                "fetch_json: cache-hit",
+                &format!("fetch_json({url:?})"),
+            );
+            Some(v.clone())
+        }
+
+        else {
+            None
+        }
     }
 
-    let response = request.send().await?;
-    write_log(
-        "fetch_json",
-        &format!("fetch_json({url:?}) got `{}`", response.status()),
-    );
+    else {
+        None
+    };
 
-    Ok(response.json().await?)
+    if value.is_none() {
+        let mut request = reqwest::Client::new().get(url);
+
+        if let Some(api_key) = api_key {
+            request = request.header("x-api-key", api_key);
+        }
+
+        let response = request.send().await?;
+        write_log(
+            "fetch_json: cache-miss",
+            &format!("fetch_json({url:?}) got `{}`", response.status()),
+        );
+
+        let v: serde_json::Value = response.json().await?;
+
+        // For now, we don't need a background worker that clears the cache.
+        // There's a background worker that fetches something from the server
+        // every 5 minutes (same cycle). The worker will call this function,
+        // so we already kinda have a background worker.
+        unsafe {
+            if let Ok(mut cache) = FETCH_JSON_CACHE.try_write() {
+                if cache.len() > 512 {
+                    cache.clear();
+                    FETCH_JSON_CACHE_CLEAR_AT = Local::now().timestamp();
+                    write_log(
+                        "fetch_json: cache-clear",
+                        &format!("cleared cache because `cache.len() > 512`"),
+                    );
+                }
+
+                else if dt > 300 {
+                    cache.clear();
+                    FETCH_JSON_CACHE_CLEAR_AT = Local::now().timestamp();
+                    write_log(
+                        "fetch_json: cache-clear",
+                        &format!("cleared cache because more than 5 mins have passed since the last cache-clear"),
+                    );
+                }
+
+                cache.insert(url.to_string(), v.clone());
+            }
+        }
+
+        value = Some(v);
+    }
+
+    Ok(serde_json::from_value(value.unwrap())?)
 }
 
 pub async fn fetch_text(url: &str, api_key: &Option<String>) -> Result<String, Error> {
