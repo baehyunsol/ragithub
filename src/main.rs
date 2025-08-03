@@ -35,7 +35,7 @@ mod utils;
 async fn main() {
     let args = env::args().collect::<Vec<_>>();
     let parsed_args = ArgParser::new()
-        .optional_arg_flag("--port", ArgType::IntegerBetween { min: Some(0), max: Some(65535) })
+        .optional_arg_flag("--port", ArgType::integer_between(Some(0), Some(65535)))
         .short_flag(&["--port"])
         .parse(&args, 1);
 
@@ -43,12 +43,14 @@ async fn main() {
         Ok(parsed_args) => parsed_args.arg_flags.get("--port").map(|n| n.parse::<u16>().unwrap()).unwrap_or(8080),
         Err(e) => {
             let message = e.kind.render();
-            let span = e.span.unwrap_rendered();
-            eprintln!("cli error: {message}\n\n{}", ragit_cli::underline_span(
-                &span.0,
-                span.1,
-                span.2,
-            ));
+            eprintln!(
+                "cli error: {message}{}",
+                if let Some(span) = &e.span {
+                    format!("\n\n{}", ragit_cli::underline_span(span))
+                } else {
+                    String::new()
+                },
+            );
 
             std::process::exit(1)
         },
