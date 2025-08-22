@@ -1,1 +1,0 @@
-pub use ragit::ImageDescription;
