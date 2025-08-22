@@ -18,6 +18,7 @@ use ragit_fs::{
 use std::collections::HashMap;
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::RwLock;
 use std::time::Duration;
 use tera::{Context as TeraContext, Tera};
 use warp::reply::{Reply, html};
@@ -59,8 +60,6 @@ pub use repo::{
     get_repo_index,
     search_repo,
 };
-
-pub const BASE: &str = "http://127.0.0.1:41127";  // TODO: make it configurable
 
 lazy_static! {
     pub static ref TERA: Tera = {
@@ -249,13 +248,50 @@ pub(crate) fn get_or<T: FromStr>(query: &HashMap<String, String>, key: &str, def
 }
 
 async fn fetch_backend_version() -> Result<(), Error> {
-    let version = fetch_text(&format!("{BASE}/version"), &None).await?;
+    let backend = get_backend();
+    let version = fetch_text(&format!("{backend}/version"), &None).await?;
     write_string("backend-version", &version, WriteMode::CreateOrTruncate)?;
     Ok(())
 }
 
 fn get_backend_version() -> Result<String, Error> {
     Ok(read_string("backend-version")?)
+}
+
+lazy_static! {
+    static ref BACKEND: RwLock<String> = RwLock::new(String::new());
+}
+
+pub fn get_backend() -> String {
+    match BACKEND.try_read() {
+        Ok(backend) => backend.to_string(),
+        Err(e) => {
+            write_log(
+                "get_backend",
+                &format!("`BACKEND.try_read()` returned {e:?}"),
+            );
+
+            // this will raise an error later
+            String::from("err")
+        },
+    }
+}
+
+pub fn set_backend(s: &str) {
+    match BACKEND.try_write() {
+        Ok(mut b) => {
+            *b = s.to_string();
+        },
+        Err(e) => {
+            write_log(
+                "set_backend",
+                &format!("`BACKEND.try_write()` returned {e:?}"),
+            );
+
+            // It's only called once, so it's okay to panic.
+            panic!()
+        },
+    }
 }
 
 // It runs every 5 minutes in the background.

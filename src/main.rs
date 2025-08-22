@@ -36,11 +36,12 @@ async fn main() {
     let args = env::args().collect::<Vec<_>>();
     let parsed_args = ArgParser::new()
         .optional_arg_flag("--port", ArgType::integer_between(Some(0), Some(65535)))
+        .arg_flag_with_default("--backend", "http://127.0.0.1:41127", ArgType::String)
         .short_flag(&["--port"])
         .parse(&args, 1);
 
-    let port_number = match parsed_args {
-        Ok(parsed_args) => parsed_args.arg_flags.get("--port").map(|n| n.parse::<u16>().unwrap()).unwrap_or(8080),
+    let parsed_args = match parsed_args {
+        Ok(parsed_args) => parsed_args,
         Err(e) => {
             let message = e.kind.render();
             eprintln!(
@@ -55,6 +56,8 @@ async fn main() {
             std::process::exit(1)
         },
     };
+    let port_number = parsed_args.arg_flags.get("--port").map(|n| n.parse::<u16>().unwrap()).unwrap_or(8080);
+    set_backend(parsed_args.arg_flags.get("--backend").unwrap());
 
     goto_root().unwrap();
     init_server().unwrap();

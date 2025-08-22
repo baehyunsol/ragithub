@@ -1,5 +1,11 @@
-use super::{HandleError, RawResponse, TeraContextBuilder, handler};
-use crate::{BASE, TERA};
+use super::{
+    HandleError,
+    RawResponse,
+    TERA,
+    TeraContextBuilder,
+    get_backend,
+    handler,
+};
 use crate::models::ImageDescription;
 use crate::utils::{fetch_bytes, fetch_json};
 use warp::reply::{Reply, html, with_header};
@@ -9,7 +15,8 @@ pub async fn fetch_repo_image(repo: String, uid: String) -> Box<dyn Reply> {
 }
 
 async fn fetch_repo_image_(repo: String, uid: String) -> RawResponse {
-    let bytes = fetch_bytes(&format!("{BASE}/sample/{repo}/image/{uid}"), &None).await.handle_error(404)?;
+    let backend = get_backend();
+    let bytes = fetch_bytes(&format!("{backend}/sample/{repo}/image/{uid}"), &None).await.handle_error(404)?;
 
     Ok(Box::new(with_header(
         bytes,
@@ -24,6 +31,7 @@ pub async fn get_image_detail(repo: String, uid: String) -> Box<dyn Reply> {
 
 async fn get_image_detail_(repo: String, uid: String) -> RawResponse {
     let tera = &TERA;
+    let backend = get_backend();
     let mut tera_context = TeraContextBuilder {
         image_modal_box: true,
         markdown: false,
@@ -35,7 +43,7 @@ async fn get_image_detail_(repo: String, uid: String) -> RawResponse {
         extra_scripts: vec![],
         extra_components: vec![],
     }.build();
-    let info = fetch_json::<ImageDescription>(&format!("{BASE}/sample/{repo}/image-desc/{uid}"), &None).await.handle_error(500)?;
+    let info = fetch_json::<ImageDescription>(&format!("{backend}/sample/{repo}/image-desc/{uid}"), &None).await.handle_error(500)?;
 
     tera_context.insert("repo", &repo);
     tera_context.insert("uid", &uid);

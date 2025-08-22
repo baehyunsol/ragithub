@@ -1,5 +1,9 @@
-use crate::BASE;
-use super::{HandleError, RawResponse, handler};
+use super::{
+    HandleError,
+    RawResponse,
+    get_backend,
+    handler,
+};
 use warp::http::StatusCode;
 use warp::reply::{Reply, with_status};
 
@@ -8,7 +12,8 @@ pub async fn get_health() -> Box<dyn Reply> {
 }
 
 async fn get_health_() -> RawResponse {
-    let request = reqwest::Client::new().get(&format!("{BASE}/health"));
+    let backend = get_backend();
+    let request = reqwest::Client::new().get(&format!("{backend}/health"));
     let response = request.send().await.handle_error(500)?;
 
     if response.status() != 200 {

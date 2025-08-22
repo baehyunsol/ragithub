@@ -1,5 +1,11 @@
-use super::{HandleError, RawResponse, TeraContextBuilder, handler};
-use crate::{BASE, TERA};
+use super::{
+    HandleError,
+    RawResponse,
+    TERA,
+    TeraContextBuilder,
+    get_backend,
+    handler,
+};
 use crate::models::{ChunkDetail, FileDetail, RenderableChunk};
 use crate::utils::{fetch_json, url_encode_strict};
 use std::collections::HashMap;
@@ -11,6 +17,7 @@ pub async fn get_file(repo: String, query: HashMap<String, String>) -> Box<dyn R
 
 async fn get_file_(repo: String, query: HashMap<String, String>) -> RawResponse {
     let tera = &TERA;
+    let backend = get_backend();
 
     // This page shows exactly what LLM sees.
     // So, it doesn't render markdown.
@@ -33,8 +40,8 @@ async fn get_file_(repo: String, query: HashMap<String, String>) -> RawResponse 
             return Err((400, String::from("`path` not in the query string")));
         },
     };
-    let file = fetch_json::<FileDetail>(&format!("{BASE}/sample/{repo}/file-content?path={}", url_encode_strict(&path)), &None).await.handle_error(404)?;
-    let chunks = fetch_json::<Vec<ChunkDetail>>(&format!("{BASE}/sample/{repo}/search?file={}", url_encode_strict(&path)), &None).await.handle_error(500)?;
+    let file = fetch_json::<FileDetail>(&format!("{backend}/sample/{repo}/file-content?path={}", url_encode_strict(&path)), &None).await.handle_error(404)?;
+    let chunks = fetch_json::<Vec<ChunkDetail>>(&format!("{backend}/sample/{repo}/search?file={}", url_encode_strict(&path)), &None).await.handle_error(500)?;
     let renderable_chunks = chunks.clone().into_iter().map(|c| c.into()).collect::<Vec<RenderableChunk>>();
 
     tera_context.insert("repo", &repo);

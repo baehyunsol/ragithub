@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
-use crate::BASE;
 use crate::error::Error;
+use crate::methods::get_backend;
 use crate::utils::{fetch_json, url_encode_strict};
 use ragit_fs::{
     basename,
@@ -46,9 +46,10 @@ pub async fn fetch_files(
     expand: &HashSet<String>,
     exceeded_limit: &mut bool,
 ) -> Result<Vec<RenderableFile>, Error> {
+    let backend = get_backend();
     let files = fetch_json::<FileDetail>(
         &format!(
-            "{BASE}/sample/{repo}/file-content?path={}&limit={}",
+            "{backend}/sample/{repo}/file-content?path={}&limit={}",
             url_encode_strict(path),
             FILE_VIEWER_LIMIT + 1,
         ),

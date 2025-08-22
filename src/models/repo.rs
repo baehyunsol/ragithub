@@ -1,7 +1,7 @@
 use async_std::task;
 use chrono::{DateTime, Utc};
-use crate::BASE;
 use crate::error::Error;
+use crate::methods::get_backend;
 use crate::utils::fetch_json;
 use ragit_fs::{
     WriteMode,
@@ -54,16 +54,17 @@ fn load_repositories_worker() -> Result<Vec<RepoIndex>, Error> {
 }
 
 pub async fn fetch_repositories() -> Result<(), Error> {
-    let repositories = fetch_json::<Vec<Repository>>(&format!("{BASE}/repo-list/sample"), &None).await?;
+    let backend = get_backend();
+    let repositories = fetch_json::<Vec<Repository>>(&format!("{backend}/repo-list/sample"), &None).await?;
     let mut result = Vec::with_capacity(repositories.len());
 
     for repo in repositories.iter() {
-        let mut traffic = fetch_json::<HashMap<String, Traffic>>(&format!("{BASE}/sample/{}/traffic", repo.name), &None).await?;
+        let mut traffic = fetch_json::<HashMap<String, Traffic>>(&format!("{backend}/sample/{}/traffic", repo.name), &None).await?;
         let total = traffic.remove("all").unwrap_or_else(
             || {
                 write_log(
                     "fetch_repositories",
-                    &format!("`{BASE}/sample/{}/traffic` is missing \"all\" field.", repo.name),
+                    &format!("`{backend}/sample/{}/traffic` is missing \"all\" field.", repo.name),
                 );
                 Traffic {
                     push: 0,

@@ -1,12 +1,13 @@
 use super::{
     HandleError,
     RawResponse,
+    TERA,
     TeraContextBuilder,
+    get_backend,
     get_or,
     handler,
     redirect,
 };
-use crate::{BASE, TERA};
 use crate::models::{
     FILE_VIEWER_LIMIT,
     Repository,
@@ -127,8 +128,9 @@ pub async fn get_repo_detail(repo: String, query: HashMap<String, String>) -> Bo
 
 async fn get_repo_detail_(repo: String, query: HashMap<String, String>) -> RawResponse {
     let tera = &TERA;
-    let repository = fetch_json::<Repository>(&format!("{BASE}/repo-list/sample/{repo}"), &None).await.handle_error(500)?;
-    let readme = fetch_json::<Option<String>>(&format!("{BASE}/sample/{repo}/meta/readme"), &None).await.handle_error(500)?;
+    let backend = get_backend();
+    let repository = fetch_json::<Repository>(&format!("{backend}/repo-list/sample/{repo}"), &None).await.handle_error(500)?;
+    let readme = fetch_json::<Option<String>>(&format!("{backend}/sample/{repo}/meta/readme"), &None).await.handle_error(500)?;
     let (clone_weekly, clone_total) = {
         let repositories = load_repositories().await.handle_error(500)?;
         let mut clone_weekly = 0;

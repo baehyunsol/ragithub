@@ -1,4 +1,4 @@
-use crate::BASE;
+use super::get_backend;
 use crate::error::Error;
 use crate::utils::into_query_string;
 use ragit_fs::write_log;
@@ -38,8 +38,9 @@ pub enum Method {
 
 impl ProxyBuilder {
     pub async fn send(&self) -> Box<dyn Reply> {
+        let backend = get_backend();
         let url = format!(
-            "{BASE}/{}{}",
+            "{backend}/{}{}",
             self.path.join("/"),
             if self.query.is_empty() {
                 String::new()

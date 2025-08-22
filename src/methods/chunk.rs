@@ -1,5 +1,11 @@
-use super::{HandleError, RawResponse, TeraContextBuilder, handler};
-use crate::{BASE, TERA};
+use super::{
+    HandleError,
+    RawResponse,
+    TERA,
+    TeraContextBuilder,
+    get_backend,
+    handler,
+};
 use crate::models::{ChunkDetail, RenderableChunk};
 use crate::utils::fetch_json;
 use warp::reply::{Reply, html};
@@ -10,6 +16,7 @@ pub async fn get_chunk(repo: String, uid: String) -> Box<dyn Reply> {
 
 async fn get_chunk_(repo: String, uid: String) -> RawResponse {
     let tera = &TERA;
+    let backend = get_backend();
 
     // This page shows exactly what LLM sees.
     // So, it doesn't render markdown.
@@ -26,7 +33,7 @@ async fn get_chunk_(repo: String, uid: String) -> RawResponse {
         extra_scripts: vec![],
         extra_components: vec![],
     }.build();
-    let chunk = fetch_json::<ChunkDetail>(&format!("{BASE}/sample/{repo}/chunk/{uid}"), &None).await.handle_error(500)?;
+    let chunk = fetch_json::<ChunkDetail>(&format!("{backend}/sample/{repo}/chunk/{uid}"), &None).await.handle_error(500)?;
     let renderable_chunk = RenderableChunk::from(chunk.clone());
 
     tera_context.insert("repo", &repo);
